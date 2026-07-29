@@ -16,7 +16,7 @@ x-backend-environment: &backend-env
   PG_HOSTNAME: db
   PG_PORT: ${PG_PORT:-5432}
   PG_USER: postgres
-  PG_PASSWORD: changeme
+  PG_PASSWORD: marble
   PG_DATABASE: marble
 
   INGESTION_BUCKET_URL: ${INGESTION_BUCKET_URL:-}
@@ -57,7 +57,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: changeme
+      POSTGRES_PASSWORD: marble
       POSTGRES_DB: marble
       PGDATA: /data/postgres
       PGPORT: ${PG_PORT:-5432}
