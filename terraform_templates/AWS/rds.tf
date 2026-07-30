@@ -8,19 +8,9 @@ resource "random_string" "rds-db-password" {
 
 
 resource "aws_db_parameter_group" "pg-marble" {
-  name   = "pg-marble"
-  family = "postgres15"
-
-  parameter {
-    name  = "rds.force_ssl"
-    value = "0"
-  }
-
-  parameter {
-    name         = "rds.logical_replication"
-    value        = "1"
-    apply_method = "pending-reboot"
-  }
+  name        = "pg-marble-16"
+  family      = "postgres16"
+  description = "Marble PostgreSQL 16"
 
   lifecycle {
     create_before_destroy = true
@@ -80,7 +70,16 @@ resource "aws_security_group" "rds" {
     cidr_blocks = ["62.23.72.222/32"]
     description = "Bureau"
   }
-  
+
+  # Accès depuis Guillaume - Campagne
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["88.185.174.129/32"]
+    description = "Guillaume - Campagne"
+  }
+
   tags = {
     Name = "RiskTool - DB - Prod"
   }
@@ -101,7 +100,7 @@ resource "aws_db_instance" "rds-marble" {
   instance_class              = "db.t4g.large"
   allocated_storage           = 150
   engine                      = "postgres"
-  engine_version              = "15"
+  engine_version              = "16.13"
   publicly_accessible         = true
   allow_major_version_upgrade = true
   max_allocated_storage  = 5000 
@@ -128,6 +127,11 @@ resource "aws_db_instance" "rds-marble" {
   # Enable performance insights
   performance_insights_enabled = true
   apply_immediately = true
+
+  lifecycle {
+    # Le stockage grandit automatiquement (max_allocated_storage) ; ne pas le ramener à la valeur initiale.
+    ignore_changes = [allocated_storage]
+  }
 }
 
 

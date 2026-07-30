@@ -22,4 +22,10 @@ resource "aws_launch_template" "ecs_ec2" {
       echo '${file("config/credentials.json")}' >> /tmp/credentials.json;
     EOF
   )
+
+  lifecycle {
+    # L'AMI ECS recommandée (SSM) change fréquemment ; ne pas recycler les noeuds
+    # à chaque apply. Mettre à jour l'AMI de façon volontaire en retirant cette ligne.
+    ignore_changes = [image_id]
+  }
 }
