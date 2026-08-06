@@ -1,9 +1,9 @@
 name: marble
 
 x-backend-image-version: &backend-image-version
-  image: europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v0.47.4
+  image: europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v1.6.0
 x-frontend-image-version: &frontend-image-version
-  image: europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:v0.47.4
+  image: europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:v1.6.0
 
 x-shared-environment: &shared-env
   ENV: ${ENV}
@@ -40,34 +40,34 @@ x-backend-environment: &backend-env
   METABASE_JWT_SIGNING_KEY: ${METABASE_JWT_SIGNING_KEY}
   METABASE_GLOBAL_DASHBOARD_ID: ${METABASE_GLOBAL_DASHBOARD_ID}
 
-  CONVOY_API_URL: ${CONVOY_API_URL}
-  CONVOY_API_KEY: ${CONVOY_API_KEY}
-  CONVOY_PROJECT_ID: ${CONVOY_PROJECT_ID}
+  # Redis — dépendance obligatoire depuis Marble v1.3
+  REDIS_HOST: ${REDIS_HOST:-redis:6379}
 
   OPENSANCTIONS_API_HOST: ${OPENSANCTIONS_API_HOST}
   OPENSANCTIONS_AUTH_METHOD: ${OPENSANCTIONS_AUTH_METHOD}
   OPENSANCTIONS_API_KEY: ${OPENSANCTIONS_API_KEY}
+
+  FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+  FIREBASE_API_KEY: ${FIREBASE_API_KEY}
+  FIREBASE_AUTH_DOMAIN: ${FIREBASE_AUTH_DOMAIN}
+  FIREBASE_APP_ID: ${FIREBASE_APP_ID}
 x-frontend-environment: &frontend-env
   NODE_ENV: production
   PORT: ${APP_PORT:-8080}
 
   SESSION_SECRET: ${SESSION_SECRET}
   SESSION_MAX_AGE: ${SESSION_MAX_AGE}
+  SESSION_IDLE_TIMEOUT: ${SESSION_IDLE_TIMEOUT}
 
-  MARBLE_API_URL_CLIENT: ${MARBLE_API_URL_CLIENT}
-  MARBLE_API_URL_SERVER: ${MARBLE_API_URL_SERVER}
-
-  FIREBASE_PROJECT_ID: ${GOOGLE_CLOUD_PROJECT}
-  FIREBASE_API_KEY: ${FIREBASE_API_KEY}
-  FIREBASE_AUTH_DOMAIN: ${FIREBASE_AUTH_DOMAIN}
-  FIREBASE_APP_ID: ${FIREBASE_APP_ID}
+  #MARBLE_API_URL_CLIENT: ${MARBLE_API_URL_CLIENT}
+  MARBLE_API_URL: ${MARBLE_API_URL_SERVER}
 
 services:
   # NB: the docker compose file includes a postgres image for the sake of completeness, but we strongly
   # suggest using a production-grade database to run Marble in a production environment
   db:
     container_name: marble-postgres
-    image: postgres:15
+    image: postgis/postgis:16-3.5-alpine
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -78,7 +78,7 @@ services:
     ports:
       - ${PG_PORT:-5432}:${PG_PORT:-5432}
     volumes:
-      - marble-db:/data/postgres
+      - marble-db-16:/data/postgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 2s
@@ -91,6 +91,7 @@ services:
     restart: always
     depends_on:
       - db
+      - redis
       - yente
     entrypoint: ["./app", "--server", "--migrations"]
     healthcheck:
@@ -106,6 +107,7 @@ services:
       # - the service account key
       # - optionally the JWT signing RSA key in .pem format
       - ./local_shared:/shared
+      - ./share:/share
     environment:
       <<: [*shared-env, *backend-env]
   cron:
@@ -139,6 +141,17 @@ services:
       - ${HOST_APP_PORT:-3000}:${APP_PORT:-8080}
     environment:
       <<: [*shared-env, *frontend-env]
+
+  # Redis — dépendance obligatoire depuis Marble v1.3 (cache / file d'attente)
+  redis:
+    container_name: redis
+    image: redis:8-alpine
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 1s
+      retries: 5
 
   # NB: the docker compose file includes an elasticsearch image for the sake of completeness, but we strongly
   # suggest using a production-grade instance to run Marble in a production environment
@@ -194,6 +207,8 @@ services:
 
 volumes:
   marble-db:
+    driver: local
+  marble-db-16:
     driver: local
   marble-es:
     driver: local

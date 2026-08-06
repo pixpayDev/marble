@@ -31,6 +31,7 @@ resource "aws_ecs_task_definition" "app" {
       { name = "FIREBASE_APP_ID", value = local.environment.firebase.appId },
       { name = "SESSION_SECRET", value = local.environment.session.secret },
       { name = "SESSION_MAX_AGE", value = local.environment.session.max_age },
+      { name = "SESSION_IDLE_TIMEOUT", value = local.environment.session.idle_timeout },
       { name = "LICENSE_KEY", value = local.environment.licence_key },
       { name = "SENTRY_ENVIRONMENT", value = local.environment.sentry.frontend.env },
       { name = "SENTRY_DSN", value = local.environment.sentry.frontend.dsn },
@@ -76,9 +77,7 @@ resource "aws_ecs_task_definition" "app" {
         { name = "SENTRY_ENVIRONMENT", value = local.environment.sentry.backend.env },
         { name = "SENTRY_DSN", value = local.environment.sentry.backend.dsn },
         { name = "SEGMENT_WRITE_KEY", value = local.environment.segment_write_key.backend },
-        { name = "CONVOY_API_URL", value = local.environment.convoy.url },
-        { name = "CONVOY_API_KEY", value = local.environment.convoy.key },
-        { name = "CONVOY_PROJECT_ID", value = local.environment.convoy.project_id },
+        { name = "REDIS_HOST", value = "${aws_elasticache_cluster.marble.cache_nodes[0].address}:6379" },
         { name = "AUTHENTICATION_JWT_SIGNING_KEY", value = "${file("config/private.key")}" }
       ]
 
@@ -117,6 +116,7 @@ resource "aws_ecs_task_definition" "app" {
         { name = "AWS_REGION", value = var.aws_region },
         { name = "AWS_ACCESS_KEY", value = var.aws_access_key_id },
         { name = "AWS_SECRET_KEY", value = var.aws_secret_access_key },
+        { name = "REDIS_HOST", value = "${aws_elasticache_cluster.marble.cache_nodes[0].address}:6379" },
         { name = "LICENSE_KEY", value = local.environment.licence_key },
         { name = "SENTRY_ENVIRONMENT", value = local.environment.sentry.backend.env },
         { name = "SENTRY_DSN", value = local.environment.sentry.backend.dsn },
