@@ -1,9 +1,9 @@
 name: marble
 
 x-backend-image-version: &backend-image-version
-  image: europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v1.6.0
+  image: europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v1.7.0
 x-frontend-image-version: &frontend-image-version
-  image: europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:v1.6.0
+  image: europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:v1.7.0
 
 x-shared-environment: &shared-env
   ENV: ${ENV}
@@ -43,14 +43,16 @@ x-backend-environment: &backend-env
   # Redis — dépendance obligatoire depuis Marble v1.3
   REDIS_HOST: ${REDIS_HOST:-redis:6379}
 
-  OPENSANCTIONS_API_HOST: ${OPENSANCTIONS_API_HOST}
-  OPENSANCTIONS_AUTH_METHOD: ${OPENSANCTIONS_AUTH_METHOD}
-  OPENSANCTIONS_API_KEY: ${OPENSANCTIONS_API_KEY}
+  # Staging utilise le yente de PROD (ALB public) — pas de yente/ES local à maintenir.
+  # Requiert : l'IP de sortie de l'EC2 staging autorisée dans le SG de l'ALB yente
+  # (terraform-opensanction, var allowed_http_cidrs). Nom de var v1.7.0 = SCREENING_OPENSANCTIONS_*.
+  SCREENING_OPENSANCTIONS_API_HOST: http://yente-1243557424.eu-west-3.elb.amazonaws.com
 
   FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
   FIREBASE_API_KEY: ${FIREBASE_API_KEY}
   FIREBASE_AUTH_DOMAIN: ${FIREBASE_AUTH_DOMAIN}
   FIREBASE_APP_ID: ${FIREBASE_APP_ID}
+
 x-frontend-environment: &frontend-env
   NODE_ENV: production
   PORT: ${APP_PORT:-8080}
@@ -92,7 +94,6 @@ services:
     depends_on:
       - db
       - redis
-      - yente
     entrypoint: ["./app", "--server", "--migrations"]
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://localhost:${API_PORT:-8080}/liveness || exit 1
@@ -153,62 +154,11 @@ services:
       timeout: 1s
       retries: 5
 
-  # NB: the docker compose file includes an elasticsearch image for the sake of completeness, but we strongly
-  # suggest using a production-grade instance to run Marble in a production environment
-  elasticsearch:
-    container_name: marble-es
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
-    ports:
-      - ${ES_PORT:-9200}:${ES_PORT:-9200}
-    environment:
-      - node.name=es
-      - cluster.name=marble-es
-      - discovery.type=single-node
-      - bootstrap.memory_lock=true
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    volumes:
-      - marble-es:/usr/share/elasticsearch/data
-  yente:
-    container_name: marble-yente
-    image: ghcr.io/opensanctions/yente:4.3.1
-    depends_on:
-      - elasticsearch
-    command:
-      [
-        "uvicorn",
-        "--host=0.0.0.0",
-        "--workers=${YENTE_API_WORKERS:-4}",
-        "yente.asgi:app",
-      ]
-    ports:
-      - ${YENTE_PORT:-8000}:${YENTE_PORT:-8000}
-    environment:
-      YENTE_INDEX_TYPE: elasticsearch
-      YENTE_INDEX_URL: ${YENTE_ELASTICSEARCH_HOST:-http://marble-es:9200}
-      YENTE_QUERY_CONCURRENCY: ${YENTE_QUERY_CONCURRENCY:-50}
-      YENTE_UPDATE_TOKEN: ""
-      YENTE_AUTO_REINDEX: false
-  yente-indexer:
-    container_name: marble-yente-indexer
-    image: ghcr.io/opensanctions/yente:4.3.1
-    depends_on:
-      - elasticsearch
-    command: ["yente", "reindex"]
-    environment:
-      YENTE_INDEX_TYPE: elasticsearch
-      YENTE_INDEX_URL: ${YENTE_ELASTICSEARCH_HOST:-http://marble-es:9200}
-      YENTE_QUERY_CONCURRENCY: "50"
-      YENTE_UPDATE_TOKEN: ""
+  # yente / OpenSanctions : plus de stack local — staging interroge le yente de PROD
+  # via SCREENING_OPENSANCTIONS_API_HOST (ALB public). Voir repo terraform-opensanction.
 
 volumes:
   marble-db:
     driver: local
   marble-db-16:
-    driver: local
-  marble-es:
     driver: local

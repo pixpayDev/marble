@@ -78,6 +78,14 @@ resource "aws_ecs_task_definition" "app" {
         { name = "SENTRY_DSN", value = local.environment.sentry.backend.dsn },
         { name = "SEGMENT_WRITE_KEY", value = local.environment.segment_write_key.backend },
         { name = "REDIS_HOST", value = "${aws_elasticache_cluster.marble.cache_nodes[0].address}:6379" },
+        { name = "AI_AGENT_MAIN_AGENT_PROVIDER_TYPE", value = "openai" },
+        { name = "AI_AGENT_MAIN_AGENT_KEY", value = local.environment.ai_agent_key },
+        # yente/OpenSanctions (self-hosted) : ALB interne (repo terraform-opensanction, output internal_alb_dns)
+        { name = "SCREENING_OPENSANCTIONS_API_HOST", value = "http://internal-yente-internal-826994886.eu-west-3.elb.amazonaws.com" },
+        # Auth optionnelle — yente self-hosted sans auth par défaut (host défini => pas de clé requise) :
+        # { name = "SCREENING_OPENSANCTIONS_AUTH_METHOD", value = "bearer" },
+        # { name = "SCREENING_OPENSANCTIONS_API_KEY", value = local.environment.opensanctions_api_key },
+        # { name = "SCREENING_OPENSANCTIONS_SCOPE", value = "default" },
         { name = "AUTHENTICATION_JWT_SIGNING_KEY", value = "${file("config/private.key")}" }
       ]
 
@@ -120,6 +128,10 @@ resource "aws_ecs_task_definition" "app" {
         { name = "LICENSE_KEY", value = local.environment.licence_key },
         { name = "SENTRY_ENVIRONMENT", value = local.environment.sentry.backend.env },
         { name = "SENTRY_DSN", value = local.environment.sentry.backend.dsn },
+        { name = "AI_AGENT_MAIN_AGENT_PROVIDER_TYPE", value = "openai" },
+        { name = "AI_AGENT_MAIN_AGENT_KEY", value = local.environment.ai_agent_key },
+        # yente/OpenSanctions (self-hosted) : ALB interne (repo terraform-opensanction, output internal_alb_dns)
+        { name = "SCREENING_OPENSANCTIONS_API_HOST", value = "http://internal-yente-internal-826994886.eu-west-3.elb.amazonaws.com" },
       ]
 
       logConfiguration = {

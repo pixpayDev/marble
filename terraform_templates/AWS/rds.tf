@@ -80,6 +80,15 @@ resource "aws_security_group" "rds" {
     description = "Guillaume - Campagne"
   }
 
+  # Accès depuis Matthias - Home
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["78.192.106.119/32"]
+    description = "Matthias - Home"
+  }
+
   tags = {
     Name = "RiskTool - DB - Prod"
   }
