@@ -1,9 +1,9 @@
 name: marble
 
 x-backend-image-version: &backend-image-version
-  image: europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v1.10.0
+  image: europe-west1-docker.pkg.dev/marble-infra/marble/marble-backend:v1.12.0
 x-frontend-image-version: &frontend-image-version
-  image: europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:v1.10.1
+  image: europe-west1-docker.pkg.dev/marble-infra/marble/marble-frontend:v1.12.0
 
 x-shared-environment: &shared-env
   ENV: ${ENV}
@@ -43,7 +43,9 @@ x-backend-environment: &backend-env
   # Redis — dépendance obligatoire depuis Marble v1.3
   REDIS_HOST: ${REDIS_HOST:-redis:6379}
 
-  # Staging utilise le yente de PROD (ALB public) — pas de yente/ES local à maintenir.
+  # Staging utilise le screening de PROD (ALB public) — pas de yente/ES local à maintenir.
+  # L'ALB sert motiva (matching) devant l'index OpenSearch de yente (repo terraform-opensanction,
+  # var screening_engine pour rebasculer sur yente).
   # Requiert : l'IP de sortie de l'EC2 staging autorisée dans le SG de l'ALB yente
   # (terraform-opensanction, var allowed_http_cidrs). Nom de var v1.7.0 = SCREENING_OPENSANCTIONS_*.
   SCREENING_OPENSANCTIONS_API_HOST: http://yente-1243557424.eu-west-3.elb.amazonaws.com
