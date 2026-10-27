@@ -13,3 +13,6 @@
 key.json
 .env
 .env.dev
+
+# Staging EC2: credentials mounted into the api container (./share:/share)
+share/
